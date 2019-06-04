@@ -652,7 +652,7 @@ DJISDKNode::publish400HzData(Vehicle *vehicle, RecvContainer recvFrame,
 
   if(p->align_time_with_FC)
   {
-    p->alignRosTimeWithFlightController(now_time, packageTimeStamp.time_ms);
+    p->alignRosTimeWithFlightController(now_time, packageTimeStamp.time_ms, packageTimeStamp.time_ns);
     if(p->curr_align_state == ALIGNED)
     {
       msg_time = p->base_time + _TICK2ROSTIME(packageTimeStamp.time_ms);
@@ -728,7 +728,7 @@ DJISDKNode::publish400HzData(Vehicle *vehicle, RecvContainer recvFrame,
  *         be affected by OS scheduling depending on system load.
  */
 
-void DJISDKNode::alignRosTimeWithFlightController(ros::Time now_time, uint32_t tick)
+void DJISDKNode::alignRosTimeWithFlightController(ros::Time now_time, uint32_t tick, uint32_t tick_ns)
 {
   /* JK ADDED FOR DRIFT CORRECTION */
   static double dji_latency = 0.00;         // Static latency prescribed by parameter in .launch file
@@ -751,13 +751,13 @@ void DJISDKNode::alignRosTimeWithFlightController(ros::Time now_time, uint32_t t
 
   /* JK ADDED FOR DRIFT CORRECTION */
   double dt = (now_time - (base_time+_TICK2ROSTIME(tick))).toSec();
-  ROS_INFO("[dji_sdk] BrashTech align debug,%.6f,%d,%.6f,%.6f,%.6f,%.6f,", now_time.toSec(), tick, base_time.toSec(), new_base_time.toSec(), dt, offset);
+  ROS_INFO("[dji_sdk] BrashTech align debug,%.6f,%d,%d,%.6f,%.6f,%.6f,%.6f,", now_time.toSec(), tick, tick_ns, base_time.toSec(), new_base_time.toSec(), dt, offset);
 
   if (curr_align_state == ALIGNING)
   {
     static int aligned_count = 0;
     static int retry_count = 0;
-    ROS_INFO_THROTTLE(1.0, "[dji_sdk] Aliging time...");
+    ROS_INFO_THROTTLE(1.0, "[dji_sdk] Aligning time...");
 
     double dt = std::fabs((now_time - (base_time + _TICK2ROSTIME(tick))).toSec());
 

@@ -404,7 +404,7 @@ private:
 
   bool local_pos_ref_set;
 
-  void alignRosTimeWithFlightController(ros::Time now_time, uint32_t tick);
+  void alignRosTimeWithFlightController(ros::Time now_time, uint32_t tick, uint32_t tick_ns);
   void setUpM100DefaultFreq(uint8_t freq[16]);
   void setUpA3N3DefaultFreq(uint8_t freq[16]);
   void gpsConvertENU(double &ENU_x, double &ENU_y,
