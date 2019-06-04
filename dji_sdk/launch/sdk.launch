@@ -8,5 +8,6 @@
     <param name="align_time" type="bool" value="false"/>
     <param name="enc_key" type="string" value="your app key here"/>
     <param name="use_broadcast" type="bool" value="false"/>
+    <param name="dji_latency" type="double" value="0.00"/>
     </node>
 </launch>

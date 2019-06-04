@@ -13,6 +13,7 @@
 #include <tf/tf.h>
 #include <sensor_msgs/Joy.h>
 #include <dji_telemetry.hpp>
+#include <sensor_msgs/TimeReference.h>
 
 #define _TICK2ROSTIME(tick) (ros::Duration((double)(tick) / 1000.0))
 
@@ -709,13 +710,28 @@ DJISDKNode::publish400HzData(Vehicle *vehicle, RecvContainer recvFrame,
 
 void DJISDKNode::alignRosTimeWithFlightController(ros::Time now_time, uint32_t tick)
 {
+  /* JK ADDED FOR DRIFT CORRECTION */
+  static double dji_latency = 0.00;         // Static latency prescribed by parameter in .launch file
+  static double offset = 0.0;               // Dynamic drift offset value
+  static int num_samples = 1000;            // How many samples before correction applied
+  static double accum = 0;                  // Accumulated tick time
+  static int it = 0;                        // Iterator
+  static ros::Time new_base_time;           // Use separate variable for drift-corrected base_time for debugging
+  static int inter_ticks = 0;
+
   if (curr_align_state == UNALIGNED)
   {
+    /* JK ADDED FOR DRIFT CORRECTION */
+    dji_latency = ros::param::get("/dji_latency", dji_latency);     // Read in latency offset during unaligned state so it only does it at the start
     base_time = now_time - _TICK2ROSTIME(tick);
     curr_align_state = ALIGNING;
     ROS_INFO("[dji_sdk] Start time alignment ...");
     return;
   }
+
+  /* JK ADDED FOR DRIFT CORRECTION */
+  double dt = (now_time - (base_time+_TICK2ROSTIME(tick))).toSec();
+  ROS_INFO_THROTTLE(0.1, "[dji_sdk] BrashTech align debug,%.6f,%d,%.6f,%.6f,%.6f,%.6f,%.6f,", now_time.toSec(), tick, base_time.toSec(), new_base_time.toSec(), dt, dji_latency, offset);
 
   if (curr_align_state == ALIGNING)
   {
@@ -745,6 +761,21 @@ void DJISDKNode::alignRosTimeWithFlightController(ros::Time now_time, uint32_t t
     }
 
     return;
+  }
+
+  /* JK ADDED FOR DRIFT CORRECTION */
+  if (curr_align_state == ALIGNED) {
+    double dt = (now_time - (base_time+_TICK2ROSTIME(tick))).toSec();
+    accum += dt;
+    it++;
+
+    if (it >= num_samples) {
+      offset += accum/(double)num_samples;
+      new_base_time = base_time + ros::Duration(offset- dji_latency);  // Update corrected time with dynamic offset and static latency 
+      accum = 0;
+      it = 0;
+      num_samples = rand() % 2000 + 1000;      // Reset num_samples for next correction cycle with random num between 1000-2000
+    }
   }
 }
 
