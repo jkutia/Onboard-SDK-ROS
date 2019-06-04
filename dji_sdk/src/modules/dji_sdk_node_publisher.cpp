@@ -631,6 +631,11 @@ void
 DJISDKNode::publish400HzData(Vehicle *vehicle, RecvContainer recvFrame,
                                   DJI::OSDK::UserData userData)
 {
+  /* JK ADDED */
+  //static unsigned int num_messages = 0;   
+  //static unsigned int error = 0;   
+  //unsigned int prev_tick;
+
   DJISDKNode *p = (DJISDKNode *) userData;
 
   uint8_t* data = recvFrame.recvData.raw_ack_array;
@@ -651,6 +656,21 @@ DJISDKNode::publish400HzData(Vehicle *vehicle, RecvContainer recvFrame,
     if(p->curr_align_state == ALIGNED)
     {
       msg_time = p->base_time + _TICK2ROSTIME(packageTimeStamp.time_ms);
+
+      /* JK ADDED 
+      static unsigned int start_tick = packageTimeStamp.time_ms;  
+      
+      static ros::Time start_time = p->base_time; 
+
+      num_messages++;
+
+      error += 
+      
+      if (num_messages == 4000) {
+        double period = _TICK2ROSTIME(packageTimeStamp.time_ms - start_tick).toSec()/4000;
+        num_messages = 0;
+      }
+      prev_tick = packageTimeStamp.time_ms;*/
     }
     else
     {
@@ -731,7 +751,7 @@ void DJISDKNode::alignRosTimeWithFlightController(ros::Time now_time, uint32_t t
 
   /* JK ADDED FOR DRIFT CORRECTION */
   double dt = (now_time - (base_time+_TICK2ROSTIME(tick))).toSec();
-  ROS_INFO_THROTTLE(0.1, "[dji_sdk] BrashTech align debug,%.6f,%d,%.6f,%.6f,%.6f,%.6f,%.6f,", now_time.toSec(), tick, base_time.toSec(), new_base_time.toSec(), dt, dji_latency, offset);
+  ROS_INFO("[dji_sdk] BrashTech align debug,%.6f,%d,%.6f,%.6f,%.6f,%.6f,", now_time.toSec(), tick, base_time.toSec(), new_base_time.toSec(), dt, offset);
 
   if (curr_align_state == ALIGNING)
   {
