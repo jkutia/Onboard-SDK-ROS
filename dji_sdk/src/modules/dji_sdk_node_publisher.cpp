@@ -751,7 +751,7 @@ void DJISDKNode::alignRosTimeWithFlightController(ros::Time now_time, uint32_t t
 
   /* JK ADDED FOR DRIFT CORRECTION */
   double dt = (now_time - (base_time+_TICK2ROSTIME(tick))).toSec();
-  ROS_INFO("[dji_sdk] BrashTech align debug,%.6f,%d,%d,%ud,%.6f,%.6f,%.6f,%.6f,", now_time.toSec(), tick, tick_ns, tick_ns, base_time.toSec(), new_base_time.toSec(), dt, offset);
+  ROS_INFO("[dji_sdk] BrashTech align debug,%.6f,%d,%d,%u,%.6f,%.6f,%.6f,%.6f,", now_time.toSec(), tick, tick_ns, tick_ns, base_time.toSec(), new_base_time.toSec(), dt, offset);
 
   if (curr_align_state == ALIGNING)
   {
