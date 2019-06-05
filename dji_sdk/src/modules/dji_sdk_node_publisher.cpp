@@ -628,6 +628,11 @@ DJISDKNode::publish100HzData(Vehicle *vehicle, RecvContainer recvFrame,
   p->acceleration_publisher.publish(acceleration);
 }
 
+/* JK ADDED
+Adds any overflows of tick_ns to the duration
+Overflows happen approx every 72 mins
+*/
+ 
 ros::Duration handleNS (uint32_t tick_ns) {
   static int num_overflows = 0;
   static uint32_t prev_tick = 0;
@@ -638,17 +643,13 @@ ros::Duration handleNS (uint32_t tick_ns) {
 
   prev_tick = tick_ns;
 
-  return ros::Duration((double)tick_ns/1e6 + num_overflows*4.295);
+  return ros::Duration((double)tick_ns/1e6 + num_overflows*4294.967296);
 }
 
 void
 DJISDKNode::publish400HzData(Vehicle *vehicle, RecvContainer recvFrame,
                                   DJI::OSDK::UserData userData)
 {
-  /* JK ADDED */
-  //static unsigned int num_messages = 0;   
-  //static unsigned int error = 0;   
-  //unsigned int prev_tick;
 
   DJISDKNode *p = (DJISDKNode *) userData;
 
@@ -669,9 +670,9 @@ DJISDKNode::publish400HzData(Vehicle *vehicle, RecvContainer recvFrame,
     p->alignRosTimeWithFlightController(now_time, packageTimeStamp.time_ms, packageTimeStamp.time_ns);
     if(p->curr_align_state == ALIGNED)
     {
-/* JK CHANGED / ADDED */
+      /* JK ADDED */
       msg_time = p->base_time + handleNS(packageTimeStamp.time_ns);
-      ROS_INFO("[dji_sdk] BrashTech align debug,%.6f,%u,%u,%.6f,%.6f,", now_time.toSec(), packageTimeStamp.time_ms, packageTimeStamp.time_ns, msg_time.toSec(), p->base_time.toSec());
+      //ROS_INFO("[dji_sdk] BrashTech align debug,%.6f,%u,%u,%.6f,%.6f,", now_time.toSec(), packageTimeStamp.time_ms, packageTimeStamp.time_ns, msg_time.toSec(), p->base_time.toSec());
     }
     else
     {
@@ -737,25 +738,22 @@ void DJISDKNode::alignRosTimeWithFlightController(ros::Time now_time, uint32_t t
   static int num_samples = 1000;            // How many samples before correction applied
   static double accum = 0;                  // Accumulated tick time
   static int it = 0;                        // Iterator
-  static ros::Time new_base_time;           // Use separate variable for drift-corrected base_time for debugging
-
-  static unsigned int tick_start = tick_ns;
-  static unsigned int num_messages = 0;
-  static unsigned int period_avg = 0;
+  static ros::Time original_base_time;           // Use separate variable for drift-corrected base_time for debugging
 
   if (curr_align_state == UNALIGNED)
   {
     /* JK ADDED FOR DRIFT CORRECTION */
     dji_latency = ros::param::get("/dji_latency", dji_latency);     // Read in latency offset during unaligned state so it only does it at the start
     base_time = now_time - _TICK2ROSTIME(tick);
+    original_base_time = base_time;
     curr_align_state = ALIGNING;
     ROS_INFO("[dji_sdk] Start time alignment ...");
     return;
   }
 
   /* JK ADDED FOR DRIFT CORRECTION */
-  //double dt = (now_time - (base_time+_TICK2ROSTIME(tick))).toSec();
-  //ROS_INFO_THROTTLE(0.1,"[dji_sdk] BrashTech align debug,%.6f,%d,%d,%u,%.6f,%.6f,%.6f,%.6f,%u,", now_time.toSec(), tick, tick_ns, tick_ns, base_time.toSec(), new_base_time.toSec(), dt, offset, period_avg);
+  //double dt = (now_time - (original_base_time+_TICK2ROSTIME(tick))).toSec();
+  //ROS_INFO_THROTTLE(0.1,"[dji_sdk] BrashTech align debug,%.6f,%d,%d,%u,%.6f,%.6f,%.6f,%.6f,%u,", now_time.toSec(), tick, tick_ns, tick_ns, original_base_time.toSec(), new_base_time.toSec(), dt, offset, period_avg);
 
   if (curr_align_state == ALIGNING)
   {
@@ -772,6 +770,7 @@ void DJISDKNode::alignRosTimeWithFlightController(ros::Time now_time, uint32_t t
     else if(aligned_count > 0)
     {
       base_time = now_time - _TICK2ROSTIME(tick);
+      original_base_time = base_time;
       ROS_INFO("[dji_sdk] ***** Time difference out of bound after %d samples, retried %d times, dt=%.3f... *****",
                aligned_count, retry_count, dt);
       aligned_count = 0;
@@ -789,24 +788,14 @@ void DJISDKNode::alignRosTimeWithFlightController(ros::Time now_time, uint32_t t
 
   /* JK ADDED FOR DRIFT CORRECTION */
   if (curr_align_state == ALIGNED) {
-
-    /*AVG TICK CORRECTION
-    num_messages++;
-
-    if (num_messages >= 4000) {
-      period_avg = (tick_ns-tick_start)/4000;
-      tick_start = tick_ns;
-      num_messages = 0;
-    }*/
-
     // DRIFT CORRECTION
-    double dt = (now_time - (base_time+_TICK2ROSTIME(tick))).toSec();
+    double dt = (now_time - (original_base_time+_TICK2ROSTIME(tick))).toSec();
     accum += dt;
     it++;
 
     if (it >= num_samples) {
       offset += accum/(double)num_samples;
-      new_base_time = base_time + ros::Duration(offset- dji_latency);  // Update corrected time with dynamic offset and static latency 
+      base_time = original_base_time + ros::Duration(offset - dji_latency);  // Update corrected time with dynamic offset and static latency 
       accum = 0;
       it = 0;
       num_samples = rand() % 2000 + 1000;      // Reset num_samples for next correction cycle with random num between 1000-2000
