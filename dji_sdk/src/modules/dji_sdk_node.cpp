@@ -225,6 +225,9 @@ DJISDKNode::initSubscriber(ros::NodeHandle& nh)
 bool
 DJISDKNode::initPublisher(ros::NodeHandle& nh)
 {
+  /* JK ADDED */
+  base_time_publisher = nh.advertise<sensor_msgs::TimeReference>("dji_base_time", 10);  // Publish base time as it updates
+  
   rc_publisher = nh.advertise<sensor_msgs::Joy>("dji_sdk/rc", 10);
 
   attitude_publisher =

@@ -320,6 +320,7 @@ private:
   ros::Subscriber gimbal_angle_cmd_subscriber;
   ros::Subscriber gimbal_speed_cmd_subscriber;
   //! telemetry data publisher
+  ros::Publisher base_time_publisher;
   ros::Publisher attitude_publisher;
   ros::Publisher angularRate_publisher;
   ros::Publisher acceleration_publisher;
@@ -404,7 +405,7 @@ private:
 
   bool local_pos_ref_set;
 
-  void alignRosTimeWithFlightController(ros::Time now_time, uint32_t tick, uint32_t tick_ns);
+  void alignRosTimeWithFlightController(ros::Time now_time, uint32_t tick, uint32_t tick_ns, DJI::OSDK::UserData userData);
   void setUpM100DefaultFreq(uint8_t freq[16]);
   void setUpA3N3DefaultFreq(uint8_t freq[16]);
   void gpsConvertENU(double &ENU_x, double &ENU_y,

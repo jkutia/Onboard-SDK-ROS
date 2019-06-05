@@ -667,7 +667,7 @@ DJISDKNode::publish400HzData(Vehicle *vehicle, RecvContainer recvFrame,
 
   if(p->align_time_with_FC)
   {
-    p->alignRosTimeWithFlightController(now_time, packageTimeStamp.time_ms, packageTimeStamp.time_ns);
+    p->alignRosTimeWithFlightController(now_time, packageTimeStamp.time_ms, packageTimeStamp.time_ns, userData);
     if(p->curr_align_state == ALIGNED)
     {
       /* JK ADDED */
@@ -730,8 +730,10 @@ DJISDKNode::publish400HzData(Vehicle *vehicle, RecvContainer recvFrame,
  *         be affected by OS scheduling depending on system load.
  */
 
-void DJISDKNode::alignRosTimeWithFlightController(ros::Time now_time, uint32_t tick, uint32_t tick_ns)
+void DJISDKNode::alignRosTimeWithFlightController(ros::Time now_time, uint32_t tick, uint32_t tick_ns, DJI::OSDK::UserData userData)
 {
+  
+
   /* JK ADDED FOR DRIFT CORRECTION */
   static double dji_latency = 0.00;         // Static latency prescribed by parameter in .launch file
   static double offset = 0.0;               // Dynamic drift offset value
@@ -739,6 +741,9 @@ void DJISDKNode::alignRosTimeWithFlightController(ros::Time now_time, uint32_t t
   static double accum = 0;                  // Accumulated tick time
   static int it = 0;                        // Iterator
   static ros::Time original_base_time;           // Use separate variable for drift-corrected base_time for debugging
+  
+  DJISDKNode *node_ptr = (DJISDKNode *)userData;  // Node pointer for publishing
+  
 
   if (curr_align_state == UNALIGNED)
   {
@@ -795,7 +800,15 @@ void DJISDKNode::alignRosTimeWithFlightController(ros::Time now_time, uint32_t t
 
     if (it >= num_samples) {
       offset += accum/(double)num_samples;
-      base_time = original_base_time + ros::Duration(offset - dji_latency);  // Update corrected time with dynamic offset and static latency 
+      base_time = original_base_time + ros::Duration(offset - dji_latency);  // Update corrected time with dynamic offset and static latency
+      
+      // Publish timeref
+      sensor_msgs::TimeReference msg;
+      msg.header.stamp = now_time;
+      msg.time_ref = base_time;
+      msg.source = "base_time";
+      node_ptr->base_time_publisher.publish(msg);
+
       accum = 0;
       it = 0;
       num_samples = rand() % 2000 + 1000;      // Reset num_samples for next correction cycle with random num between 1000-2000
