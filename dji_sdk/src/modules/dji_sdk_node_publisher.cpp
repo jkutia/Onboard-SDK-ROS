@@ -737,7 +737,10 @@ void DJISDKNode::alignRosTimeWithFlightController(ros::Time now_time, uint32_t t
   static double accum = 0;                  // Accumulated tick time
   static int it = 0;                        // Iterator
   static ros::Time new_base_time;           // Use separate variable for drift-corrected base_time for debugging
-  static int inter_ticks = 0;
+
+  static unsigned int tick_start = tick_ns;
+  static unsigned int num_messages = 0;
+  static unsigned int period_avg = 0;
 
   if (curr_align_state == UNALIGNED)
   {
@@ -751,7 +754,7 @@ void DJISDKNode::alignRosTimeWithFlightController(ros::Time now_time, uint32_t t
 
   /* JK ADDED FOR DRIFT CORRECTION */
   double dt = (now_time - (base_time+_TICK2ROSTIME(tick))).toSec();
-  ROS_INFO("[dji_sdk] BrashTech align debug,%.6f,%d,%d,%u,%.6f,%.6f,%.6f,%.6f,", now_time.toSec(), tick, tick_ns, tick_ns, base_time.toSec(), new_base_time.toSec(), dt, offset);
+  ROS_INFO("[dji_sdk] BrashTech align debug,%.6f,%d,%d,%u,%.6f,%.6f,%.6f,%.6f,%u", now_time.toSec(), tick, tick_ns, tick_ns, base_time.toSec(), new_base_time.toSec(), dt, offset, period_avg);
 
   if (curr_align_state == ALIGNING)
   {
@@ -785,6 +788,17 @@ void DJISDKNode::alignRosTimeWithFlightController(ros::Time now_time, uint32_t t
 
   /* JK ADDED FOR DRIFT CORRECTION */
   if (curr_align_state == ALIGNED) {
+
+    // AVG TICK CORRECTION
+    num_messages++;
+
+    if (num_messages >= 4000) {
+      period_avg = (tick_ns-tick_start)/4000;
+      tick_start = tick_ns;
+      num_messages = 0;
+    }
+
+    // DRIFT CORRECTION
     double dt = (now_time - (base_time+_TICK2ROSTIME(tick))).toSec();
     accum += dt;
     it++;
