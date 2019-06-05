@@ -320,6 +320,7 @@ private:
   ros::Subscriber gimbal_angle_cmd_subscriber;
   ros::Subscriber gimbal_speed_cmd_subscriber;
   //! telemetry data publisher
+  /* JK ADDED */
   ros::Publisher base_time_publisher;
   ros::Publisher attitude_publisher;
   ros::Publisher angularRate_publisher;
